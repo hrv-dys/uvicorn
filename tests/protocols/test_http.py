@@ -660,6 +660,19 @@ async def test_early_disconnect(http_protocol_cls: type[HTTPProtocol]):
     assert got_disconnect_event
 
 
+async def test_half_close_sends_response(http_protocol_cls: type[HTTPProtocol]):
+    """When the client half-closes (EOF on read side), the server should
+    still send the response per HTTPWG recommendation."""
+    app = Response("Hello, world", media_type="text/plain")
+
+    protocol = get_connected_protocol(app, http_protocol_cls)
+    protocol.data_received(SIMPLE_GET_REQUEST)
+    protocol.eof_received()
+    await protocol.loop.run_one()
+    assert b"HTTP/1.1 200 OK" in protocol.transport.buffer
+    assert b"Hello, world" in protocol.transport.buffer
+
+
 async def test_early_response(http_protocol_cls: type[HTTPProtocol]):
     app = Response("Hello, world", media_type="text/plain")
 

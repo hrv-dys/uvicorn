@@ -127,8 +127,13 @@ class H11Protocol(asyncio.Protocol):
             self.transport.close()
             self._unset_keepalive_if_required()
 
-    def eof_received(self) -> None:
-        pass
+    def eof_received(self) -> bool:
+        # Half-close: client finished sending but expects a response.
+        # Return True to keep the transport open for writing.
+        if self.cycle is not None and not self.cycle.response_complete:
+            self.cycle.more_body = False
+            self.cycle.message_event.set()
+        return True
 
     def _unset_keepalive_if_required(self) -> None:
         if self.timeout_keep_alive_task is not None:
